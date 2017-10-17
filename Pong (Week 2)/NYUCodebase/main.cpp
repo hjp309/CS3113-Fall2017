@@ -10,7 +10,7 @@
 #include "stb_image.h"
 
 #ifdef _WINDOWS
-#define RESOURCE_FOLDER "C:\\Users\\hjp30\\OneDrive\\Documents\\Junior_Year\\CS3113\\Week1\\NYUCodebase\\"
+#define RESOURCE_FOLDER ""
 #else		
 #define RESOURCE_FOLDER "NYUCodebase.app/Contents/Resources/"
 #endif
