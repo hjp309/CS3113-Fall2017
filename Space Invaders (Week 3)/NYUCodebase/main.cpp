@@ -40,26 +40,24 @@ int main(int argc, char *argv[])
 	float accumulator = 0.0f;
 	float lastTicks = 0.0f;
 
-	EntityType type = PLAYER;
-	EntityType mob1 = MOB1;
-
-	Entity player(type, 0.0f, -3.0f);
+	Entity player(EntityType::PLAYER, 0.0f, -3.0f);
 	std::vector<Entity *> mobs;
-	for(size_t x = 0; x < 4; x++)
-		for (size_t y = 0; y < 4; y++) {
-			mobs.push_back(new Entity(mob1, x, y));
-
+	for(size_t x = 0; x < 8; x++)
+		for (size_t y = 0; y < 8; y++) {
+			if (y == 0)
+				mobs.push_back(new Entity(EntityType::MOB1, x * 1.2 - 2, y * 1.1));
+			if (y == 1)
+				mobs.push_back(new Entity(EntityType::MOB2, x * 1.2 - 2, y * 1.1));
+			if (y == 2)
+				mobs.push_back(new Entity(EntityType::MOB3, x * 1.2 - 2, y * 1.1));
+			if (y == 3)
+				mobs.push_back(new Entity(EntityType::MOB4, x * 1.2 - 2, y * 1.1));
 		}
 
+	float playerX;
 	const Uint8 *keys = SDL_GetKeyboardState(NULL);
 
 	while (!done) {
-		//Process Events
-		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
-				done = true;
-			}
-		}
 		float ticks = float(SDL_GetTicks()) / 1000.0f;
 		float elapsed = ticks - lastTicks;
 		lastTicks = ticks;
@@ -67,6 +65,21 @@ int main(int argc, char *argv[])
 		if (elapsed < FIXED_TIMESTEP) {
 			accumulator = elapsed;
 			continue;
+		}
+
+		//Process Events
+		while (SDL_PollEvent(&event)) {
+			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
+				done = true;	
+			}
+			else if (event.type == SDL_KEYDOWN) {
+				if (keys[SDL_SCANCODE_LEFT])
+					playerX = -fabs(5.0f);
+				else if (keys[SDL_SCANCODE_RIGHT])
+					playerX = fabs(5.0f);
+			}
+			else
+				playerX = 0;
 		}
 
 		glUseProgram(program.programID);
@@ -80,6 +93,7 @@ int main(int argc, char *argv[])
 		while (elapsed >= FIXED_TIMESTEP) {
 			elapsed -= FIXED_TIMESTEP;
 		}
+		player.update(elapsed, playerX * elapsed, 0);
 
 		//Render
 		glClearColor(.5f, .5f, .5f, 1.0f);

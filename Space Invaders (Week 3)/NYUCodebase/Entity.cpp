@@ -2,10 +2,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-SpriteSheet::SpriteSheet(unsigned int textureID, float x, float y, float u, float v, float width, float height, float size) :
-	textureID(textureID), x(x), y(y), u(u), v(v), width(width), height(height), size(size) {};
+SpriteSheet::SpriteSheet(unsigned int textureID, float u, float v, float width, float height) :
+	textureID(textureID), u(u), v(v), width(width), height(height), size(size) {
+};
 
-void SpriteSheet::draw(ShaderProgram * program) {
+void SpriteSheet::draw(ShaderProgram * program, float * vertices[]) {
 	glBindTexture(GL_TEXTURE_2D, textureID);	
 	GLfloat texCoords[] = {
 		u, v + height,
@@ -16,28 +17,13 @@ void SpriteSheet::draw(ShaderProgram * program) {
 		u + width, v + height
 	};
 
-	float aspect = width / height;
-	float vertices[] = {
-		(x - 0.5f) * size * aspect, (y - 0.5) * size,
-		(x + 0.5f) * size * aspect, (y + 0.5) * size,
-		(x - 0.5f) * size * aspect, (y + 0.5) * size,
-		(x + 0.5f) * size * aspect, (y + 0.5) * size,
-		(x - 0.5f) * size * aspect, (y - 0.5) * size,
-		(x + 0.5f) * size * aspect, (y - 0.5) * size,
-	};
-
-	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, vertices);
+	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, *vertices);
 	glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, texCoords);
 	glEnableVertexAttribArray(program->positionAttribute);
 	glEnableVertexAttribArray(program->texCoordAttribute);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glDisableVertexAttribArray(program->positionAttribute);
 	glDisableVertexAttribArray(program->texCoordAttribute);
-}
-
-void SpriteSheet::move(float x, float y) {
-	x += x;
-	y += y;
 }
 
 GLuint LoadTexture(const char *filePath) {
@@ -57,41 +43,109 @@ GLuint LoadTexture(const char *filePath) {
 	return texture;
 }
 
+
+
 Entity::Entity(EntityType whatType, float x, float y) : type(whatType), x(x), y(y) {
-	switch (type) {
-	case PLAYER:
+	switch (whatType) {
+	case EntityType::PLAYER:
 		std::cout << "Player" << std::endl;
 		u = 46;
 		v = 0;
 		width = 22;
 		height = 16;
 		break;
-	case MOB1:
+	case EntityType::MOB1:
 		std::cout << "Mob 1" << std::endl;
 		u = 0;
 		v = 0;
 		width = 22;
 		height = 16;
 		break;
-	case MOB2:
-	case MOB3: 
-	case MOB4: 
-	case MISSILE:
-		;
+	case EntityType::MOB2:
+		std::cout << "Mob 2" << std::endl;
+		u = 22;
+		v = 0;
+		width = 22;
+		height = 16;
+		break;
+	case EntityType::MOB3:
+		std::cout << "Mob 3" << std::endl;
+		u = 0;
+		v = 16;
+		width = 22;
+		height = 16;
+		break;
+	case EntityType::MOB4:
+		std::cout << "Mob 4" << std::endl;
+		u = 22;
+		v = 16;
+		width = 22;
+		height = 16;
+		break;
+	case EntityType::MISSILE:
+		break;
 	}
+
+	size = 1;
+	aspect = width / height;
+	vertices = new float[12];
+	vertices[0] = (x - 0.5f) * size * aspect;
+	vertices[1] = (y - 0.5f) * size;
+	vertices[2] = (x + 0.5f) * size * aspect;
+	vertices[3] = (y + 0.5) * size;
+	vertices[4] = (x - 0.5f) * size * aspect;
+	vertices[5] = (y + 0.5) * size;
+	vertices[6] = (x + 0.5f) * size * aspect;
+	vertices[7] = (y + 0.5) * size;
+	vertices[8] = (x - 0.5f) * size * aspect;
+	vertices[9] = (y - 0.5) * size;
+	vertices[10] = (x + 0.5f) * size * aspect;
+	vertices[11] = (y - 0.5) * size;
 
 	textureID = LoadTexture("invaders.png");
-	sprite = SpriteSheet(textureID, x, y, u / 104.f, v / 32.f, width / 104.0f, height / 32.0f);
-	
+	sprite = SpriteSheet(textureID, u / 104.f, v / 32.f, width / 104.0f, height / 32.0f);	
 }
 
-void Entity::update(float time, const Uint8 * key) {
+void Entity::update(float time, float velX, float velY) {	
 	switch (type) {
-	case PLAYER:
-		sprite.move( * time, 0);
+	case EntityType::PLAYER:
+		x += velX;
+		y += velY;
+		if (x > 1.5f)
+			x == 2.0f;
+		break;
+	case EntityType::MOB1:
+		
+		break;
+	case EntityType::MOB2:
+		break;
+	case EntityType::MOB3:
+		break;
+	case EntityType::MOB4:
+		break;
 	}
+
+	vertices[0] = (x - 0.5f) * size * aspect;
+	vertices[1] = (y - 0.5f) * size;
+	vertices[2] = (x + 0.5f) * size * aspect;
+	vertices[3] = (y + 0.5) * size;
+	vertices[4] = (x - 0.5f) * size * aspect;
+	vertices[5] = (y + 0.5) * size;
+	vertices[6] = (x + 0.5f) * size * aspect;
+	vertices[7] = (y + 0.5) * size;
+	vertices[8] = (x - 0.5f) * size * aspect;
+	vertices[9] = (y - 0.5) * size;
+	vertices[10] = (x + 0.5f) * size * aspect;
+	vertices[11] = (y - 0.5) * size;
+}
+
+void Entity::move(float x, float y) {
 }
 
 void Entity::draw(ShaderProgram * program) {
-	sprite.draw(program);
+	sprite.draw(program, &vertices);
+}
+
+bool Entity::checkCollision() {
+
 }
