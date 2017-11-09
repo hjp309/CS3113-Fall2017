@@ -147,5 +147,5 @@ void Entity::draw(ShaderProgram * program) {
 }
 
 bool Entity::checkCollision() {
-
+	return true;
 }

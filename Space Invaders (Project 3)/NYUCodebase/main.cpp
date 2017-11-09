@@ -24,15 +24,15 @@ int main(int argc, char *argv[])
 	displayWindow = SDL_CreateWindow("My Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 360, SDL_WINDOW_OPENGL);
 	SDL_GLContext context = SDL_GL_CreateContext(displayWindow);
 	SDL_GL_MakeCurrent(displayWindow, context);
-	#ifdef _WINDOWS
-		glewInit();
-	#endif	
+#ifdef _WINDOWS
+	glewInit();
+#endif	
 
 	glViewport(0, 0, WIDTH, HEIGHT);
 	Matrix projectionMatrix;
 	Matrix modelviewMatrix;
 	projectionMatrix.SetOrthoProjection(-2.0f, 2.0f, -2.0f, 2.0f, -1.0f, 1.0f);
-	
+
 	ShaderProgram program(RESOURCE_FOLDER"vertex_textured.glsl", RESOURCE_FOLDER"fragment_textured.glsl");
 
 	SDL_Event event;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 
 	Entity player(EntityType::PLAYER, 0.0f, -3.0f);
 	std::vector<Entity *> mobs;
-	for(size_t x = 0; x < 8; x++)
+	for (size_t x = 0; x < 8; x++)
 		for (size_t y = 0; y < 8; y++) {
 			if (y == 0)
 				mobs.push_back(new Entity(EntityType::MOB1, x * 1.2 - 2, y * 1.1));
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 		//Process Events
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
-				done = true;	
+				done = true;
 			}
 			else if (event.type == SDL_KEYDOWN) {
 				if (keys[SDL_SCANCODE_LEFT])
