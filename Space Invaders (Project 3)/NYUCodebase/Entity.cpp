@@ -2,30 +2,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-SpriteSheet::SpriteSheet(unsigned int textureID, float u, float v, float width, float height) :
-	textureID(textureID), u(u), v(v), width(width), height(height), size(size) {
-};
-
-void SpriteSheet::draw(ShaderProgram * program, float * vertices[]) {
-	glBindTexture(GL_TEXTURE_2D, textureID);	
-	GLfloat texCoords[] = {
-		u, v + height,
-		u + width, v,
-		u, v,
-		u + width, v,
-		u, v + height,
-		u + width, v + height
-	};
-
-	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, *vertices);
-	glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, texCoords);
-	glEnableVertexAttribArray(program->positionAttribute);
-	glEnableVertexAttribArray(program->texCoordAttribute);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glDisableVertexAttribArray(program->positionAttribute);
-	glDisableVertexAttribArray(program->texCoordAttribute);
-}
-
 GLuint LoadTexture(const char *filePath) {
 	int width, height, comp;
 	unsigned char* image = stbi_load(filePath, &width, &height, &comp, STBI_rgb_alpha);
@@ -43,109 +19,113 @@ GLuint LoadTexture(const char *filePath) {
 	return texture;
 }
 
+SpriteSheet::SpriteSheet(unsigned int textureID, float u, float v, float spriteWidth, float spriteHeight, float size) :
+	textureID(textureID), u(u), v(v), spriteWidth(spriteWidth), spriteHeight(spriteHeight), size(size) {
+};
 
+void SpriteSheet::draw(ShaderProgram * program) {
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	GLfloat texCoords[] = {
+		u, v + spriteHeight,
+		u + spriteWidth, v,
+		u, v,
+		u + spriteWidth, v,
+		u, v + spriteHeight,
+		u + spriteWidth, v + spriteHeight
+	};
 
-Entity::Entity(EntityType whatType, float x, float y) : type(whatType), x(x), y(y) {
-	switch (whatType) {
-	case EntityType::PLAYER:
-		std::cout << "Player" << std::endl;
-		u = 46;
-		v = 0;
-		width = 22;
-		height = 16;
-		break;
-	case EntityType::MOB1:
-		std::cout << "Mob 1" << std::endl;
-		u = 0;
-		v = 0;
-		width = 22;
-		height = 16;
-		break;
-	case EntityType::MOB2:
-		std::cout << "Mob 2" << std::endl;
-		u = 22;
-		v = 0;
-		width = 22;
-		height = 16;
-		break;
-	case EntityType::MOB3:
-		std::cout << "Mob 3" << std::endl;
-		u = 0;
-		v = 16;
-		width = 22;
-		height = 16;
-		break;
-	case EntityType::MOB4:
-		std::cout << "Mob 4" << std::endl;
-		u = 22;
-		v = 16;
-		width = 22;
-		height = 16;
-		break;
-	case EntityType::MISSILE:
-		break;
-	}
+	float aspect = spriteWidth / spriteHeight;
+	float vertices[] = {
+		-0.5f * size * aspect, -0.5f * size,
+		0.5f * size * aspect, 0.5f * size,
+		-0.5f * size * aspect, 0.5f * size,
+		0.5f * size * aspect, 0.5f * size,
+		-0.5f * size * aspect, -0.5f * size,
+		0.5f * size * aspect, -0.5f * size
+	};
+	glUseProgram(program->programID);
 
-	size = 1;
-	aspect = width / height;
-	vertices = new float[12];
-	vertices[0] = (x - 0.5f) * size * aspect;
-	vertices[1] = (y - 0.5f) * size;
-	vertices[2] = (x + 0.5f) * size * aspect;
-	vertices[3] = (y + 0.5) * size;
-	vertices[4] = (x - 0.5f) * size * aspect;
-	vertices[5] = (y + 0.5) * size;
-	vertices[6] = (x + 0.5f) * size * aspect;
-	vertices[7] = (y + 0.5) * size;
-	vertices[8] = (x - 0.5f) * size * aspect;
-	vertices[9] = (y - 0.5) * size;
-	vertices[10] = (x + 0.5f) * size * aspect;
-	vertices[11] = (y - 0.5) * size;
+	glVertexAttribPointer(program->positionAttribute, 2, GL_FLOAT, false, 0, vertices);
+	glVertexAttribPointer(program->texCoordAttribute, 2, GL_FLOAT, false, 0, texCoords);
+
+	glEnableVertexAttribArray(program->positionAttribute);
+	glEnableVertexAttribArray(program->texCoordAttribute);
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glDisableVertexAttribArray(program->positionAttribute);
+	glDisableVertexAttribArray(program->texCoordAttribute);
+}
+
+Entity::Entity(float playerX) {
+	position.x = playerX;
+	position.y = -1.35f;
+	velocity = 5.0f;
+	timeActive = 0;
+	sides = Vector4(position.x - 0.25, position.y + 0.25, position.y - 0.25, position.x + 0.25);
+	sprite = SpriteSheet(textureID, 46.0f/104.0f, 16.0f/32.0f, 2.0f/104.0f, 6.0f/32.0f, 0.25f);
+}
+
+Entity::Entity(EntityType whatType, float x, float y, float size) : type(whatType){
+	position.x = x;
+	position.y = y;
 
 	textureID = LoadTexture("invaders.png");
-	sprite = SpriteSheet(textureID, u / 104.f, v / 32.f, width / 104.0f, height / 32.0f);	
-}
+	sides = Vector4(position.x - 0.25, position.y + 0.25, position.y - 0.25, position.x + 0.25);
 
-void Entity::update(float time, float velX, float velY) {	
 	switch (type) {
 	case EntityType::PLAYER:
-		x += velX;
-		y += velY;
-		if (x > 1.5f)
-			x == 2.0f;
+		std::cout << "Player spawned." << std::endl;
+		velocity = 1.0f;
+		sprite = SpriteSheet(textureID, 46.0f/104.0f, 0, 22.0f/104.0f, 16.0f/32.0f, size);
 		break;
-	case EntityType::MOB1:
-		
-		break;
-	case EntityType::MOB2:
-		break;
-	case EntityType::MOB3:
-		break;
-	case EntityType::MOB4:
+	case EntityType::MOB:
+		std::cout << "Mob spawned." << std::endl;
+		velocity = 0.5f;
+		sprite = SpriteSheet(textureID, 0, 0, 22.0f/104.0f, 16.0f/32.0f, size);
 		break;
 	}
-
-	vertices[0] = (x - 0.5f) * size * aspect;
-	vertices[1] = (y - 0.5f) * size;
-	vertices[2] = (x + 0.5f) * size * aspect;
-	vertices[3] = (y + 0.5) * size;
-	vertices[4] = (x - 0.5f) * size * aspect;
-	vertices[5] = (y + 0.5) * size;
-	vertices[6] = (x + 0.5f) * size * aspect;
-	vertices[7] = (y + 0.5) * size;
-	vertices[8] = (x - 0.5f) * size * aspect;
-	vertices[9] = (y - 0.5) * size;
-	vertices[10] = (x + 0.5f) * size * aspect;
-	vertices[11] = (y - 0.5) * size;
-}
-
-void Entity::move(float x, float y) {
 }
 
 void Entity::draw(ShaderProgram * program) {
-	sprite.draw(program, &vertices);
+	mvMatrix.Identity();
+	mvMatrix.Translate(position.x, position.y, 0);
+	program->SetModelviewMatrix(mvMatrix);
+	sprite.draw(program);
 }
 
-bool Entity::checkCollision() {
-	return true;
+void Entity::update(float elapsed) {
+	switch (type) {
+	case EntityType::MOB:
+		if (position.x + velocity * elapsed > 3.55f) {
+			velocity = -abs(velocity);
+			position.y -= 0.1f;
+		}
+		else if (position.x - velocity * elapsed < -3.55f) {
+			velocity = abs(velocity);
+			position.y -= 0.1f;
+		}
+		position.x += velocity * elapsed;
+		break;
+	case EntityType::PLAYER:
+		position.x += velocity * elapsed;
+		break;
+	}
+}
+
+Vector2& Entity::getPlayerPos() {
+	if (type == EntityType::PLAYER) {
+		return position;
+	}
+	return Vector2(0, 0);
+}
+
+bool Entity::collideWith(const Entity &object){
+	if (!(sides.b > object.sides.t ||
+		sides.t < object.sides.b ||
+		sides.r < object.sides.l ||
+		sides.l > object.sides.r)) {
+		return true;
+	}
+	return false;
 }
