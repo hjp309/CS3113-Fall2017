@@ -30,9 +30,9 @@ Matrix projectionMatrix, modelviewMatrix;
 
 //TEXTURES & MEDIA
 GLuint Textexture;
-enum EntityType { PLAYER, OBSTACLES, BG, HUD, FLOOR, START, END };
+enum EntityType { PLAYER, MOB, BG, HUD, FLOOR, START, END };
 enum GameState { MENU, GAME, GAMEOVER };
-std::vector<Entity *> obstacles, floorTiles, liveSprites;
+std::vector<Entity *> enemies, floorTiles, liveSprites;
 Entity * player;
 Entity * startBackground;
 Entity * gameBackground;
@@ -199,7 +199,7 @@ public:
 		alive = true;
 
 		//DATA INSTANTIATION BY GAME TYPE
-		if (type == EntityType::OBSTACLES) {
+		if (type == EntityType::MOB) {
 			Gtexture = LoadTexture("sprites/dirtCenter.png");
 			sprite = SheetSprite(Gtexture, 0.f, 0.f, 1.f, 1.f, size);
 		}
@@ -256,7 +256,7 @@ public:
 
 	void update(float time) {
 		if (alive) {
-			if (type == EntityType::OBSTACLES) {
+			if (type == EntityType::MOB) {
 				elapsed += time;
 				if (elapsed > 5.0f) { //Every 5 seconds, increase speed
 					elapsed = 0.f;
@@ -294,7 +294,7 @@ public:
 				}
 
 				//COLLISIONS, LIVES, GAME LOGIC
-				for (Entity * obstacle : obstacles) {
+				for (Entity * obstacle : enemies) {
 					if (collideWith(*obstacle) && !hit) {
 						//std::cout << "You're hit!" << std::endl;
 						hit = true;
@@ -364,8 +364,8 @@ public:
 
 void updateGame(float elapsed) {
 	player->update(elapsed);
-	for (int i = 0; i < obstacles.size(); i++)
-		obstacles[i]->update(elapsed);
+	for (int i = 0; i < enemies.size(); i++)
+		enemies[i]->update(elapsed);
 }
 
 void drawMenu() {
@@ -396,7 +396,7 @@ void drawGame() {
 	gameBackground->draw();
 	for (Entity * tile : floorTiles)
 		tile->draw();
-	for (Entity * obstacle : obstacles)
+	for (Entity * obstacle : enemies)
 		obstacle->draw();
 	for (int i = 0; i < lives; i++)
 		liveSprites[i]->draw();
@@ -480,8 +480,8 @@ void Clean() {	//DELETES ALL POINTER DATA WHEN GAME IS CLOSED
 	delete(gameBackground);
 	delete(endBackground);
 	Mix_FreeMusic(music);
-	for (int i = 0; i < obstacles.size(); i++)
-		delete obstacles[i];
+	for (int i = 0; i < enemies.size(); i++)
+		delete enemies[i];
 	for (int i = 0; i < floorTiles.size(); i++)
 		delete floorTiles[i];
 	for (int i = 0; i < liveSprites.size(); i++)
@@ -527,7 +527,7 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < obstaclesMax; i++) {
 		float x = -3.55f + ((rand() % 20) * 7.1) / 20;
 		std::cout << x << std::endl;
-		obstacles.push_back(new Entity(EntityType::OBSTACLES, x, 5.0f, obstacleSize, obstacleSize, Vector2(0, -0.5f)));
+		enemies.push_back(new Entity(EntityType::MOB, x, 5.0f, obstacleSize, obstacleSize, Vector2(0, -0.5f)));
 	}
 	for (int i = 0; i < 20; i++) 
 		floorTiles.push_back(new Entity(EntityType::FLOOR, -3.3f + 0.5f * i, -1.75f, 0.5f, 0.5f));
@@ -565,7 +565,7 @@ int main(int argc, char *argv[]) {
 				else if (keys[SDL_SCANCODE_RETURN]) {
 					if (state != 1) {
 						if (state == 2) {	//RECYCLE GAME OBJECTS TO REPLAY GAME
-							for (Entity * obstacle : obstacles) {
+							for (Entity * obstacle : enemies) {
 								obstacle->difficulty = 1;
 								obstacle->position = Vector2(-3.55f + ((rand() % 20) * 7.1) / 20, 5.f);
 								hit = false;

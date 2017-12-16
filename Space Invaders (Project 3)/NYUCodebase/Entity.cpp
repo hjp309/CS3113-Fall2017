@@ -57,75 +57,166 @@ void SpriteSheet::draw(ShaderProgram * program) {
 	glDisableVertexAttribArray(program->texCoordAttribute);
 }
 
-Entity::Entity(float playerX) {
-	position.x = playerX;
-	position.y = -1.35f;
-	velocity = 5.0f;
-	timeActive = 0;
-	sides = Vector4(position.x - 0.25, position.y + 0.25, position.y - 0.25, position.x + 0.25);
-	sprite = SpriteSheet(textureID, 46.0f/104.0f, 16.0f/32.0f, 2.0f/104.0f, 6.0f/32.0f, 0.25f);
-}
+Entity::Entity(EntityType newType, float x, float y, float width, float height, Vector2 newVel) {
+	type = newType;
+	velocity.x = newVel.x;
+	velocity.y = newVel.y;
 
-Entity::Entity(EntityType whatType, float x, float y, float size) : type(whatType){
+	size.x = width;
+	size.y = height;
+
+	//DATA INSTANTIATION BY GAME TYPE
+	if (type == EntityType::OBSTACLES) {
+		Gtexture = LoadTexture("sprites/dirtCenter.png");
+		sprite = SheetSprite(Gtexture, 0.f, 0.f, 1.f, 1.f, size);
+	}
+	else if (type == EntityType::PLAYER) {
+		pTexture = LoadTexture("sprites/player.png");
+		sprite = SheetSprite(pTexture, 0.f, 0.f, 53.f / 159.f, 63.f / 126.f, size); //53 x 63, 159 x 126
+
+		faceRight = true;
+		playerMoving = false;
+		hit = false;
+		lives = 3;
+		invWin = 2.0f;
+
+		walkingSound = Mix_LoadWAV("sounds/walking.wav");	//Channel 0
+		hitSound = Mix_LoadWAV("sounds/bonk.wav");			//Channel 1
+		invWinSound = Mix_LoadWAV("sounds/invWin.wav");		//Channel 2
+	}
+
 	position.x = x;
 	position.y = y;
 
-	textureID = LoadTexture("invaders.png");
-	sides = Vector4(position.x - 0.25, position.y + 0.25, position.y - 0.25, position.x + 0.25);
-
-	switch (type) {
-	case EntityType::PLAYER:
-		std::cout << "Player spawned." << std::endl;
-		velocity = 1.0f;
-		sprite = SpriteSheet(textureID, 46.0f/104.0f, 0, 22.0f/104.0f, 16.0f/32.0f, size);
-		break;
-	case EntityType::MOB:
-		std::cout << "Mob spawned." << std::endl;
-		velocity = 0.5f;
-		sprite = SpriteSheet(textureID, 0, 0, 22.0f/104.0f, 16.0f/32.0f, size);
-		break;
-	}
+	dimensions.b = position.y - (size.y / 2);
+	dimensions.t = position.y + (size.y / 2);
+	dimensions.l = position.x - (size.x / 2);
+	dimensions.r = position.x + (size.x / 2);
 }
 
-void Entity::draw(ShaderProgram * program) {
-	mvMatrix.Identity();
-	mvMatrix.Translate(position.x, position.y, 0);
-	program->SetModelviewMatrix(mvMatrix);
-	sprite.draw(program);
-}
-
-void Entity::update(float elapsed) {
-	switch (type) {
-	case EntityType::MOB:
-		if (position.x + velocity * elapsed > 3.55f) {
-			velocity = -abs(velocity);
-			position.y -= 0.1f;
+void Entity::update(float time) {
+	if (alive) {
+		if (type == EntityType::OBSTACLES) {
+			elapsed += time;
+			if (elapsed > 5.0f) { //Every 5 seconds, increase speed
+				elapsed = 0.f;
+				difficulty++;
+				if (difficulty > maxDifficulty) {
+					difficulty = maxDifficulty;
+				}
+			}
+			int deadZone = -3.f - (rand() % (maxDifficulty - difficulty + 1));	//Randomize spawn
+			if (position.y < deadZone) {
+				position.x = -3.55f + ((rand() % 20) * 7.1) / 20;
+				position.y = 5.f;
+			}
 		}
-		else if (position.x - velocity * elapsed < -3.55f) {
-			velocity = abs(velocity);
-			position.y -= 0.1f;
+
+		if (type == EntityType::PLAYER) {
+			score++;
+			scoreStream.str("");
+			scoreStream << int(score / 20);
+
+			//ANIMATION
+			if (playerMoving) {
+				animationTime++;
+				Mix_PlayChannel(0, walkingSound, -1);
+			}
+			else {
+				animationTime = 0;
+				Mix_Pause(0);
+			}
+			if (faceRight && alive) {
+				sprite = SheetSprite(pTexture, 0.f + int(animationTime) * (53.f / 159.f), 0.f, 53.f / 159.f, 63.f / 126.f, size); //53 x 63, 159 x 126
+			}
+			else if (!faceRight && alive) {
+				sprite = SheetSprite(pTexture, 0.f + int(animationTime) * (53.f / 159.f), 0.5f, 53.f / 159.f, 63.f / 126.f, size);
+			}
+
+			//COLLISIONS, LIVES, GAME LOGIC
+			for (Entity * obstacle : obstacles) {
+				if (collideWith(*obstacle) && !hit) {
+					//std::cout << "You're hit!" << std::endl;
+					hit = true;
+					obstacle->position.x = -3.55f + ((rand() % 20) * 7.1) / 20;
+					obstacle->position.y = 5.f;
+					lives--;
+					Mix_PlayChannel(1, hitSound, 0);
+					if (lives <= 0) {
+						lives = 0;
+						position = Vector2(0.f, -1.25f);
+						velocity.x = 0;
+						alive = false;
+						Mix_PauseMusic();
+						state = 2;
+					}
+					else {
+						Mix_PlayChannel(2, invWinSound, 0);
+					}
+				}
+			}
+
+			//INVINCIBILITY WINDOW
+			if (hit) {
+				elapsed += time;
+				if (elapsed >= invWin) {
+					elapsed = 0;
+					hit = false;
+				}
+			}
 		}
-		position.x += velocity * elapsed;
-		break;
-	case EntityType::PLAYER:
-		position.x += velocity * elapsed;
-		break;
+
+		//DISPLACEMENT 
+		position.x += velocity.x * difficulty * time;
+		position.y += velocity.y * difficulty * time;
+
+		dimensions.b = position.y - (size.y / 2);
+		dimensions.t = position.y + (size.y / 2);
+		dimensions.l = position.x - (size.x / 2);
+		dimensions.r = position.x + (size.x / 2);
 	}
 }
 
-Vector2& Entity::getPlayerPos() {
-	if (type == EntityType::PLAYER) {
-		return position;
+void Entity::draw() {
+	movement.Identity();
+	movement.Translate(position.x, position.y, 0);
+	program->SetModelviewMatrix(movement);
+	sprite.draw();
+
+	if (type == EntityType::PLAYER && hit) {
+		modelviewMatrix.Identity();
+		modelviewMatrix.Translate(position.x - 0.4f, position.y + 0.3f, 0.0f);
+		program->SetModelviewMatrix(modelviewMatrix);
+		DrawText(program, "INVINCIBLE!", 0.15f, -0.07f);
 	}
-	return Vector2(0, 0);
 }
 
-bool Entity::collideWith(const Entity &object){
-	if (!(sides.b > object.sides.t ||
-		sides.t < object.sides.b ||
-		sides.r < object.sides.l ||
-		sides.l > object.sides.r)) {
+bool Entity::collideWith(Entity& other) {
+	if (!(dimensions.b > other.dimensions.t ||
+		dimensions.t < other.dimensions.b ||
+		dimensions.r < other.dimensions.l ||
+		dimensions.l > other.dimensions.r)) {
 		return true;
 	}
 	return false;
 }
+
+class Entity {
+public:
+	Matrix movement;
+	Vector4 dimensions;
+	Vector2 position, size, velocity;
+	GLuint Gtexture, pTexture;
+	SheetSprite sprite;
+	EntityType type;
+	bool faceRight, alive;
+	float elapsed, animationTime, invWin;
+	int difficulty;
+	
+
+	
+
+	
+
+	
+};

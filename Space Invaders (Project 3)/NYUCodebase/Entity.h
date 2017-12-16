@@ -44,17 +44,17 @@ public:
 };
 
 class Entity {
-	EntityType type;
-	float size;
-	GLuint textureID;
-	SpriteSheet sprite;
-	Matrix mvMatrix;
 public:
-	Vector2 position;
-	Vector4 sides;
-	float velocity, timeActive;
-	Entity(float playerX);
-	Entity(EntityType whatType, float x, float y, float size = 1);
+	Matrix movement;
+	Vector4 dimensions;
+	Vector2 position, size, velocity;
+	GLuint Gtexture, pTexture;
+	SpriteSheet sprite;
+	EntityType type;
+	bool faceRight, alive;
+	float elapsed, animationTime, invWin;
+	int difficulty;
+	Entity(EntityType newType, float x, float y, float width, float height, Vector2 newVel = Vector2(0, 0));
 	void draw(ShaderProgram *program);
 	void update(float elapsed);
 	Vector2& getPlayerPos();
